@@ -13,7 +13,7 @@ validity information. It optionally can save the remote certificate and/or
 
 If you have go installed and configure, use `go get`:
 
-go get github.com/andmarios/getcert
+    go get github.com/andmarios/getcert
 
 Alternatively you can download a binary from the [releases page](https://github.com/andmarios/getcert/releases).
 

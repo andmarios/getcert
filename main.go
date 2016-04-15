@@ -49,13 +49,12 @@ const (
 
 func main() {
 	flag.Parse()
+	remote := strings.Join(flag.Args(), ":")
 
-	if help {
+	if help || len(remote) == 0 {
 		PrintHelp()
 		os.Exit(0)
 	}
-
-	remote := strings.Join(flag.Args(), ":")
 
 	// Try to connect normally and detect any errors. Exit if errors are unknown.
 	conn, err := tls.Dial("tcp", remote, &tls.Config{})
@@ -250,7 +249,7 @@ func PrintCertInfo(cert *x509.Certificate) {
 
 func PrintHelp() {
 
-	fmt.Println(`getcert [OPTIONS] repote port
+	fmt.Println(`getcert [OPTIONS] remote port
 
 getcert downloads a certificate from a SSL protected remote and checks it
 against the system's CA chain. It prints an openssl like description and
@@ -262,20 +261,21 @@ An exit code of 3 means a certificate that doesn't match the remote's hostname.
 An exit code of 1 is a generic error, e.g inability to connect to remote.
 
 Options:
-    -o, -out FILENAME:
-	    save certificate (PEM format) as FILENAME
+    -o, -out FILENAME
+        save certificate (PEM format) as FILENAME
     -c, -just-check
-        just check if certificate is valid for system's CA chain (exit code 2 or
-         3 if not) and do not print additional information
+        just check if certificate is valid for system's CA chain (exit code 2
+         or exit code 3 if not) and do not print additional information
     -h, -help
         this text
 
 Examples:
-    Check googles SSL certificate:
+    Check google's SSL certificate:
         getcert www.google.com 443
     Check gmail's SMTP server certificate without printing its description:
         getcert -just-check smtp-relay.gmail.com 465
-    Check example's LDAPs server certificate and save it to 'cert.pem':
+    Check example's LDAPS server certificate and save it to 'cert.pem':
         getcert -out cert.pem example.com 636
-`)
+
+More information at https://github.com/andmarios/getcert`)
 }

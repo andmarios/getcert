@@ -45,6 +45,7 @@ const (
 	otherError
 	invalidExpiredCert
 	wrongHostnameCert
+	unknownAuthorityCert
 )
 
 func main() {
@@ -63,6 +64,8 @@ func main() {
 			validity = invalidExpiredCert
 		} else if _, found := err.(x509.HostnameError); found {
 			validity = wrongHostnameCert
+		} else if _, found := err.(x509.UnknownAuthorityError); found {
+			validity = unknownAuthorityCert
 		} else {
 			validity = otherError
 			fmt.Printf("Failed to connect: " + err.Error())
@@ -79,12 +82,14 @@ func main() {
 			fmt.Println("Certificate invalid or expired.")
 		case wrongHostnameCert:
 			fmt.Println("Certificate doesn't match hostname.")
+		case unknownAuthorityCert:
+			fmt.Println("Certificate signed by unknown authority.")
 		}
 	}
 
 	// If we had certificate errors but we are still interested in the certificate
 	// connect with relaxed settings and continue.
-	if validity == invalidExpiredCert || validity == wrongHostnameCert {
+	if validity == invalidExpiredCert || validity == wrongHostnameCert || validity == unknownAuthorityCert {
 		conn, err = tls.Dial("tcp", remote, &tls.Config{InsecureSkipVerify: true})
 		if err != nil {
 			fmt.Println(err)
@@ -120,6 +125,9 @@ func main() {
 		case wrongHostnameCert:
 			fmt.Println("    Valid: FALSE")
 			fmt.Println("        The certificate doesn't match the remote's hostname.")
+		case unknownAuthorityCert:
+			fmt.Println("    Valid: FALSE")
+			fmt.Println("        The certificate is signed by an unknown authority.")
 		}
 	}
 
@@ -202,10 +210,14 @@ func PrintCertInfo(cert *x509.Certificate) {
 	fmt.Printf("            X509v3 Key Usage: %v\n", cert.KeyUsage)
 	fmt.Printf("            X509v3 Extended Key Usage: %v\n", cert.ExtKeyUsage)
 	fmt.Printf("            X509v3 Basic Constraints: %v\n", cert.BasicConstraintsValid)
-	fmt.Printf("            X509v3 Subject Key Identifier:\n")
-	fmt.Printf("                % s\n", PrettyPrintBytes(cert.SubjectKeyId, 256)[0])
-	fmt.Printf("            X509v3 Authority Key Identifier:\n")
-	fmt.Printf("                % s\n", PrettyPrintBytes(cert.AuthorityKeyId, 256)[0])
+	if len(cert.SubjectKeyId) > 0 {
+		fmt.Printf("            X509v3 Subject Key Identifier:\n")
+		fmt.Printf("                % s\n", PrettyPrintBytes(cert.SubjectKeyId, 256)[0])
+	}
+	if len(cert.AuthorityKeyId) > 0 {
+		fmt.Printf("            X509v3 Authority Key Identifier:\n")
+		fmt.Printf("                % s\n", PrettyPrintBytes(cert.AuthorityKeyId, 256)[0])
+	}
 	fmt.Printf("        X509v3 Subject Alternative Name:\n")
 	if len(cert.DNSNames) > 0 {
 		for i := 0; i < len(cert.DNSNames); i++ {
@@ -258,6 +270,7 @@ validity information. It optionally can save the remote certificate and/or
 
 An exit code of 2 means an invalid or expired certificate.
 An exit code of 3 means a certificate that doesn't match the remote's hostname.
+An exit code of 4 means a certificate signed by an unknown authority.
 An exit code of 1 is a generic error, e.g inability to connect to remote.
 
 Options:
